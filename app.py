@@ -1,22 +1,14 @@
+from flask import Flask, render_template, request, jsonify
+import joblib
 import pandas as pd
 import json
-import joblib
-from flask import Flask, request, jsonify, render_template
 
-# =======================
-# Load model and schema
-# =======================
-MODEL_PATH = "attrition_pipeline.joblib"
-SCHEMA_PATH = "schema.json"
-
-model = joblib.load(MODEL_PATH)
-with open(SCHEMA_PATH) as f:
-    schema = json.load(f)
-
-# =======================
-# Flask app
-# =======================
 app = Flask(__name__)
+
+# Load model + schema
+model = joblib.load("attrition_pipeline.joblib")
+with open("schema.json") as f:
+    schema = json.load(f)
 
 @app.route("/")
 def index():
@@ -24,14 +16,14 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.json
-    df_in = pd.DataFrame([data], columns=[f["name"] for f in schema["fields"]])
-    pred = model.predict(df_in)[0]
-    prob = float(model.predict_proba(df_in)[:,1][0])
+    data = request.get_json()
+    df = pd.DataFrame([data], columns=[f["name"] for f in schema["fields"]])
+    pred = model.predict(df)[0]
+    prob = float(model.predict_proba(df)[:, 1][0])
     return jsonify({
         "attrition": "Yes" if pred == 1 else "No",
         "probability": prob
     })
 
 if __name__ == "__main__":
-    app.run(port=7860, debug=True)
+    app.run(host="0.0.0.0", port=5000)
